@@ -41,7 +41,7 @@ jobs:
             docker exec -d vault vault operator seal || true && \
             docker rm -f vault || true && \
             docker run -d --cap-add=IPC_LOCK --restart=always \
-              -e VAULT_LOCAL_CONFIG={"backend":{"file":{"path":"vault/"}},"listener":{"tcp":{"address":"0.0.0.0:8200","tls_disable":1}},"ui":true, "disable_mlock":true} \
+              -e 'VAULT_LOCAL_CONFIG={"backend":{"file":{"path":"vault/"}},"listener":{"tcp":{"address":"0.0.0.0:8200","tls_disable":1}},"ui":true, "disable_mlock":true}' \
               --label='traefik.enable=true' \
               --label='traefik.http.routers.homepage.middlewares=secHeaders@file,api_auth' \
               --label='traefik.http.routers.homepage.tls.certResolver=letsencrypt' \
@@ -49,7 +49,7 @@ jobs:
               --label='traefik.http.routers.homepage.rule=Host(\`vault.ackerson.de\`)' \
               --label='traefik.http.routers.vault.service=vault-svc' \
               --label='traefik.http.services.vault-svc.loadbalancer.server.port=8200' \
-              -p 8200:8200 --name=vault vault:1.9"
+              -p 8200:8200 --name vault vault:1.9"
 
           rm -Rf ~/.ssh ~/.docker/config.json
           ./digitaloceans/do -fn=firewallSSH -allow=false -ip=$public_ip_address
