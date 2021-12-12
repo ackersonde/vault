@@ -35,13 +35,13 @@ jobs:
           EOF
           chmod 400 ~/.ssh/id_rsa
 
+          # "backend":{"s3":{"access_key":"abcd1234"},{"secret_key":"defg5678"},{"bucket":"my-bucket"}},"listener":...
+
           ssh -o StrictHostKeyChecking=no root@ackerson.de "\
-            docker exec -d vault vault operator seal && \
+            docker exec -d vault vault operator seal || true && \
             docker rm -f vault || true && \
             docker run -d --cap-add=IPC_LOCK --restart=always \
-              -e DARKSKY_API_KEY=${{ secrets.CTX_DARKSKY_API_KEY }} \
-              -e GITHUB_RUN_ID=$GITHUB_RUN_ID \
-              -e VAULT_LOCAL_CONFIG={"backend":{"file":{"path":"vault/"}},"listener":{"tcp":{"address":"0.0.0.0:8200","tls_disable":1}},"ui":true, "disable_mlock":true}
+              -e VAULT_LOCAL_CONFIG={"backend":{"file":{"path":"vault/"}},"listener":{"tcp":{"address":"0.0.0.0:8200","tls_disable":1}},"ui":true, "disable_mlock":true} \
               --label='traefik.enable=true' \
               --label='traefik.http.routers.homepage.middlewares=secHeaders@file,api_auth' \
               --label='traefik.http.routers.homepage.tls.certResolver=letsencrypt' \
