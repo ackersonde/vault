@@ -46,7 +46,7 @@ jobs:
               --label='traefik.http.routers.homepage.middlewares=secHeaders@file,api_auth' \
               --label='traefik.http.routers.homepage.tls.certResolver=letsencrypt' \
               --label='traefik.http.routers.homepage.tls.domains=vault.ackerson.de' \
-              --label='traefik.http.routers.homepage.rule=Host(\`vault.ackerson.de\`) \
+              --label='traefik.http.routers.homepage.rule=Host(\`vault.ackerson.de\`)' \
               --label='traefik.http.routers.vault.service=vault-svc' \
               --label='traefik.http.services.vault-svc.loadbalancer.server.port=8200' \
               -p 8200:8200 --name vault vault:1.9"
