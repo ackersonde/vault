@@ -14,6 +14,8 @@ jobs:
     runs-on: ubuntu-20.04
     env:
       CTX_SPACE_TOKEN: "NOT YET"
+      CTX_DIGITALOCEAN_DROPLET_PROXY_TOKEN: ${{ secrets.CTX_DIGITALOCEAN_DROPLET_PROXY_TOKEN }}
+      CTX_DIGITALOCEAN_FIREWALL: ${{ secrets.CTX_DIGITALOCEAN_FIREWALL }}
     steps:
       - uses: actions/checkout@v2
       - name: Deploy to DO
