@@ -1,0 +1,57 @@
+name: Deploy vault in DigitalOcean
+
+on:
+  push:
+    branches: [ master ]
+  workflow_dispatch:
+    inputs:
+      ca_pub_fingerprint:
+        description: fingerprint of CA signed user cert
+        required: false
+
+jobs:
+  build:
+    runs-on: ubuntu-20.04
+    env:
+      CTX_SPACE_TOKEN: "NOT YET"
+    steps:
+      - uses: actions/checkout@v2
+      - name: Deploy to DO
+        run: |
+          git clone https://github.com/ackersonde/digitaloceans.git
+          cd digitaloceans
+          go get -t -d -v ./...
+          go build do.go
+          cd ../
+
+          public_ip_address=$(curl -s https://checkip.amazonaws.com)
+          ./digitaloceans/do -fn=firewallSSH -allow=true -ip=$public_ip_address -tag=traefik
+
+          mkdir ~/.ssh
+          cat <<EOF >~/.ssh/id_rsa
+          ${{ secrets.CTX_DIGITALOCEAN_SSH_PRIVKEY }}
+          EOF
+          chmod 400 ~/.ssh/id_rsa
+
+          ssh -o StrictHostKeyChecking=no root@ackerson.de "\
+            docker exec -d vault vault operator seal && \
+            docker rm -f vault || true && \
+            docker run -d --cap-add=IPC_LOCK --restart=always \
+              -e DARKSKY_API_KEY=${{ secrets.CTX_DARKSKY_API_KEY }} \
+              -e GITHUB_RUN_ID=$GITHUB_RUN_ID \
+              -e VAULT_LOCAL_CONFIG={"backend":{"file":{"path":"vault/"}},"listener":{"tcp":{"address":"0.0.0.0:8200","tls_disable":1}},"ui":true, "disable_mlock":true}
+              --label='traefik.enable=true' \
+              --label='traefik.http.routers.homepage.middlewares=secHeaders@file,api_auth' \
+              --label='traefik.http.routers.homepage.tls.certResolver=letsencrypt' \
+              --label='traefik.http.routers.homepage.tls.domains=vault.ackerson.de' \
+              --label='traefik.http.routers.homepage.rule=Host(\`vault.ackerson.de\`) \
+              --label='traefik.http.routers.vault.service=vault-svc' \
+              --label='traefik.http.services.vault-svc.loadbalancer.server.port=8200' \
+              -p 8200:8200 --name vault vault:1.9"
+
+          rm -Rf ~/.ssh ~/.docker/config.json
+          ./digitaloceans/do -fn=firewallSSH -allow=false -ip=$public_ip_address
+
+          curl -s -o /dev/null -X POST -d token=${{ secrets.CTX_SLACK_NOTIFICATIONS_TOKEN }} -d channel=C092UE0H4 \
+            -d text="<https://github.com/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID | $GITHUB_REPOSITORY @ $GITHUB_RUN_ID>" \
+            https://slack.com/api/chat.postMessage
