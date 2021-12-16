@@ -43,6 +43,8 @@ jobs:
             docker rm -f vault || true && \
             docker run -d --cap-add=IPC_LOCK --restart=always \
               -v /root/vault_config.json:/vault/config/local.json \
+              -e VAULT_API_ADDR=http://127.0.0.1:8200 \
+              -e VAULT_ADDR=http://127.0.0.1:8200 \
               --label='traefik.enable=true' \
               --label='traefik.http.routers.vault.middlewares=secHeaders@file,api_auth' \
               --label='traefik.http.routers.vault.tls.certResolver=letsencrypt' \
