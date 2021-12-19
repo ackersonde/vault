@@ -39,10 +39,12 @@ jobs:
 
           scp -o StrictHostKeyChecking=no vault_config.json root@ackerson.de:~/
           ssh -o StrictHostKeyChecking=no root@ackerson.de "\
+            mkdir vault || true && mv vault_config.json vault/ && \
             docker exec -d vault vault operator seal || true && \
             docker rm -f vault || true && \
             docker run -d --cap-add=IPC_LOCK --restart=always \
-              -v /root/vault_config.json:/vault/config/local.json \
+              -v /root/vault/vault_config.json:/vault/config/local.json \
+              -v /root/vault/snaps:/vault/snaps \
               -e VAULT_API_ADDR=http://127.0.0.1:8200 \
               -e VAULT_ADDR=http://127.0.0.1:8200 \
               --label='traefik.enable=true' \
