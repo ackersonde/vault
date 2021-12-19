@@ -1,6 +1,7 @@
 # recovery-shares stuff is Auto Unseal ops
-vault operator init -recovery-shares=5 -recovery-threshold=3 > generated_keys.txt
-export keyArray=$(grep 'Unseal Key ' < generated_keys.txt  | cut -c15-)
+vault operator init -key-shares=3 -key-threshold=2 > generated_keys.txt
+
+keyArray=$(grep 'Unseal Key ' < generated_keys.txt  | cut -c15-)
 for s in $keyArray; do
   vault operator unseal "$s"
 done
@@ -17,6 +18,3 @@ vault write auth/userpass/users/admin password=${SECRET_PASS} policies=spring-po
 
 # Add test value to my-secret
 vault kv put kv/my-secret my-value=s3cr3t
-
-# For bender daily cron:
-docker exec -it vault ash -c "VAULT_TOKEN=${VAULT_TOKEN} vault operator raft snapshot save backup.snap"

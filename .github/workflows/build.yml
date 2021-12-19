@@ -13,7 +13,6 @@ jobs:
   build:
     runs-on: ubuntu-20.04
     env:
-      CTX_SPACE_TOKEN: "NOT YET"
       CTX_DIGITALOCEAN_DROPLET_PROXY_TOKEN: ${{ secrets.CTX_DIGITALOCEAN_DROPLET_PROXY_TOKEN }}
       CTX_DIGITALOCEAN_FIREWALL: ${{ secrets.CTX_DIGITALOCEAN_FIREWALL }}
     steps:
@@ -35,16 +34,23 @@ jobs:
           EOF
           chmod 400 ~/.ssh/id_rsa
 
-          # "backend":{"s3":{"access_key":"abcd1234"},{"secret_key":"defg5678"},{"bucket":"my-bucket"}},"listener":...
+          do_vol_mount=/dev/disk/by-id/scsi-0DO_Volume_vault-data
+          mount_cmd="$(cat <<-EOF
+            if ! mountpoint /mnt/vault_data ; then
+              mkdir -p /mnt/vault_data
+              mount -o discard,defaults $do_vol_mount /mnt/vault_data
+              echo $do_vol_mount /mnt/vault_data ext4 defaults,nofail,discard 0 0 | sudo tee -a /etc/fstab
+            fi
+          EOF
+          )"
 
           scp -o StrictHostKeyChecking=no vault_config.json root@ackerson.de:~/
           ssh -o StrictHostKeyChecking=no root@ackerson.de "\
-            mkdir vault || true && mv vault_config.json vault/ && \
+            $mount_cmd && mv vault_config.json /mnt/vault_data/ && \
             docker exec -d vault vault operator seal || true && \
             docker rm -f vault || true && \
             docker run -d --cap-add=IPC_LOCK --restart=always \
-              -v /root/vault/vault_config.json:/vault/config/local.json \
-              -v /root/vault/snaps:/vault/snaps \
+              -v /mnt/vault_data/vault_config.json:/vault/config/local.json \
               -e VAULT_API_ADDR=http://127.0.0.1:8200 \
               -e VAULT_ADDR=http://127.0.0.1:8200 \
               --label='traefik.enable=true' \
