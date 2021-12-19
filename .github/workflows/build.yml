@@ -44,8 +44,9 @@ jobs:
           EOF
           )"
 
-          scp -o StrictHostKeyChecking=no vault_config.json root@ackerson.de:/mnt/vault_data/config/local.json
-          ssh -o StrictHostKeyChecking=no root@ackerson.de "$mount_cmd && \
+          ssh root@ackerson.de "$mount_cmd"
+          scp vault_config.json root@ackerson.de:/mnt/vault_data/config/local.json
+          ssh root@ackerson.de "\
             docker exec -d -e VAULT_TOKEN=${VAULT_TOKEN} vault vault operator seal || true && \
             docker rm -f vault || true && \
             docker run -d --cap-add=IPC_LOCK --restart=always \
