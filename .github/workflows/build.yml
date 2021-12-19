@@ -37,20 +37,19 @@ jobs:
           do_vol_mount=/dev/disk/by-id/scsi-0DO_Volume_vault-data
           mount_cmd="$(cat <<-EOF
             if ! mountpoint /mnt/vault_data ; then
-              mkdir -p /mnt/vault_data
+              mkdir -p /mnt/vault_data/config
               mount -o discard,defaults $do_vol_mount /mnt/vault_data
               echo $do_vol_mount /mnt/vault_data ext4 defaults,nofail,discard 0 0 | sudo tee -a /etc/fstab
             fi
           EOF
           )"
 
-          scp -o StrictHostKeyChecking=no vault_config.json root@ackerson.de:~/
-          ssh -o StrictHostKeyChecking=no root@ackerson.de "\
-            $mount_cmd && mv vault_config.json /mnt/vault_data/ && \
-            docker exec -d vault vault operator seal || true && \
+          scp -o StrictHostKeyChecking=no vault_config.json root@ackerson.de:/mnt/vault_data/config/local.json
+          ssh -o StrictHostKeyChecking=no root@ackerson.de "$mount_cmd && \
+            docker exec -d -e VAULT_TOKEN=${VAULT_TOKEN} vault vault operator seal || true && \
             docker rm -f vault || true && \
             docker run -d --cap-add=IPC_LOCK --restart=always \
-              -v /mnt/vault_data/vault_config.json:/vault/config/local.json \
+              -v /mnt/vault_data:/vault \
               -e VAULT_API_ADDR=http://127.0.0.1:8200 \
               -e VAULT_ADDR=http://127.0.0.1:8200 \
               --label='traefik.enable=true' \
