@@ -37,8 +37,8 @@ jobs:
           do_vol_mount=/dev/disk/by-id/scsi-0DO_Volume_vault-data
           mount_cmd="$(cat <<-EOF
             if ! mountpoint /mnt/vault_data ; then
-              mkdir -p /mnt/vault_data/config
               mount -o discard,defaults $do_vol_mount /mnt/vault_data
+              mkdir -p /mnt/vault_data/config
               echo $do_vol_mount /mnt/vault_data ext4 defaults,nofail,discard 0 0 | sudo tee -a /etc/fstab
             fi
           EOF
