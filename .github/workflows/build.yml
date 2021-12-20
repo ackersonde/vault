@@ -55,7 +55,7 @@ jobs:
           ssh -o StrictHostKeyChecking=no root@ackerson.de "$mount_cmd"
           scp local.json init-vault.sh root@ackerson.de:/mnt/vault_data/config/
           ssh root@ackerson.de "\
-            docker exec -d -e VAULT_TOKEN=${VAULT_TOKEN} vault vault operator seal || true && \
+            docker exec -d -e VAULT_TOKEN=${{ secrets.VAULT_TOKEN }} vault vault operator seal || true && \
             docker rm -f vault || true && \
             docker run -d --cap-add=IPC_LOCK --restart=always \
               -v /mnt/vault_data:/vault \
