@@ -1,5 +1,6 @@
 # this should only be run in a uninitialized, new instance of vault
 # (e.g. volume doesn't have vault config/data in it)
+chown vault:vault /vault/
 vault operator init -key-shares=3 -key-threshold=2 > generated_keys.txt
 
 keyArray=$(grep 'Unseal Key ' < generated_keys.txt  | cut -c15-)
