@@ -1,4 +1,5 @@
-# recovery-shares stuff is Auto Unseal ops
+# this should only be run in a uninitialized, new instance of vault
+# (e.g. volume doesn't have vault config/data in it)
 vault operator init -key-shares=3 -key-threshold=2 > generated_keys.txt
 
 keyArray=$(grep 'Unseal Key ' < generated_keys.txt  | cut -c15-)
@@ -12,9 +13,9 @@ export VAULT_TOKEN=$(grep "Initial Root Token: " < generated_keys.txt  | cut -c2
 vault secrets enable -version=1 kv
 
 # Enable userpass and add default user
-vault auth enable userpass
-vault policy write spring-policy spring-policy.hcl
-vault write auth/userpass/users/admin password=${SECRET_PASS} policies=spring-policy
+# vault auth enable userpass
+# vault policy write spring-policy spring-policy.hcl
+# vault write auth/userpass/users/admin password=${SECRET_PASS} policies=spring-policy
 
 # Add test value to my-secret
-vault kv put kv/my-secret my-value=s3cr3t
+#vault kv put kv/my-secret my-value=s3cr3t
