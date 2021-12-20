@@ -45,6 +45,7 @@ jobs:
           EOF
           )"
           init_cmd="$(cat <<-EOF
+            sleep 3
             if [ ! -d "/mnt/vault_data/core" ] ; then
               docker exec -d vault /vault/config/init-vault.sh
             fi
