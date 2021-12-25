@@ -25,7 +25,6 @@ jobs:
           go build do.go
           cd ../
 
-          ./digitaloceans/do -fn=createSnapshot -volumeID=${{ secrets.CTX_DIGITALOCEAN_VAULT_VOLUME_ID }}
           public_ip_address=$(curl -s https://checkip.amazonaws.com)
           ./digitaloceans/do -fn=firewallSSH -allow=true -ip=$public_ip_address -tag=traefik
 
