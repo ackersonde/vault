@@ -25,6 +25,7 @@ jobs:
           go build do.go
           cd ../
 
+          ./digitaloceans/do -fn=createSnapshot -volumeID=${{ secrets.CTX_DIGITALOCEAN_VAULT_VOLUME_ID }}
           public_ip_address=$(curl -s https://checkip.amazonaws.com)
           ./digitaloceans/do -fn=firewallSSH -allow=true -ip=$public_ip_address -tag=traefik
 
@@ -37,8 +38,8 @@ jobs:
           do_vol_mount=/dev/disk/by-id/scsi-0DO_Volume_vault-data
           mount_cmd="$(cat <<-EOF
             if ! mountpoint /mnt/vault_data ; then
-              mount -o discard,defaults $do_vol_mount /mnt/vault_data
               mkdir -p /mnt/vault_data/config
+              mount -o discard,defaults $do_vol_mount /mnt/vault_data
               chown systemd-network:1000 /mnt/vault_data
               echo $do_vol_mount /mnt/vault_data ext4 defaults,nofail,discard 0 0 | sudo tee -a /etc/fstab
             fi
