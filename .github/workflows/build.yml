@@ -41,7 +41,7 @@ jobs:
             if ! mountpoint /mnt/hetzner_disk ; then
               mount -o discard,defaults $hz_vol_mount /mnt/hetzner_disk
               mkdir -p /mnt/hetzner_disk/vault_data/config
-              chown systemd-network:1000 /mnt/hetzner_disk/vault_data
+              chown -Rf systemd-network:1000 /mnt/hetzner_disk/vault_data
               echo $hz_vol_mount /mnt/hetzner_disk ext4 defaults,nofail,discard 0 0 | sudo tee -a /etc/fstab
             fi
           EOF
