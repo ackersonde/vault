@@ -1,4 +1,4 @@
-name: Deploy vault in DigitalOcean
+name: Deploy vault in Hetzner
 
 on:
   push:
@@ -13,20 +13,19 @@ jobs:
   build:
     runs-on: ubuntu-20.04
     env:
-      CTX_DIGITALOCEAN_DROPLET_PROXY_TOKEN: ${{ secrets.CTX_DIGITALOCEAN_DROPLET_PROXY_TOKEN }}
-      CTX_DIGITALOCEAN_FIREWALL: ${{ secrets.CTX_DIGITALOCEAN_FIREWALL }}
+      CTX_HETZNER_API_TOKEN: ${{ secrets.CTX_HETZNER_API_TOKEN }}
     steps:
       - uses: actions/checkout@v2
-      - name: Deploy to DO
+      - name: Deploy to Hetzner
         run: |
-          git clone https://github.com/ackersonde/digitaloceans.git
-          cd digitaloceans
-          go get -t -d -v ./...
-          go build do.go
+          git clone https://github.com/ackersonde/hetzner.git
+          cd hetzner
+          go mod tidy
+          go build hetzner.go
           cd ../
 
           public_ip_address=$(curl -s https://checkip.amazonaws.com)
-          ./digitaloceans/do -fn=firewallSSH -allow=true -ip=$public_ip_address -tag=traefik
+          ./hetzner -fn=firewallSSH -tag=traefik -ip=$public_ip_address
 
           mkdir ~/.ssh
           cat <<EOF >~/.ssh/id_rsa
@@ -34,30 +33,30 @@ jobs:
           EOF
           chmod 400 ~/.ssh/id_rsa
 
-          do_vol_mount=/dev/disk/by-id/scsi-0DO_Volume_vault-data
+          hz_vol_mount=/dev/disk/by-id/scsi-0HC_Volume_15704224
           mount_cmd="$(cat <<-EOF
-            if ! mountpoint /mnt/vault_data ; then
-              mkdir -p /mnt/vault_data/config
-              mount -o discard,defaults $do_vol_mount /mnt/vault_data
-              chown systemd-network:1000 /mnt/vault_data
-              echo $do_vol_mount /mnt/vault_data ext4 defaults,nofail,discard 0 0 | sudo tee -a /etc/fstab
+            if ! mountpoint /mnt/hetzner_disk ; then
+              mount -o discard,defaults $hz_vol_mount /mnt/hetzner_disk
+              mkdir -p /mnt/hetzner_disk/vault_data/config
+              chown systemd-network:1000 /mnt/hetzner_disk/vault_data
+              echo $hz_vol_mount /mnt/hetzner_disk ext4 defaults,nofail,discard 0 0 | sudo tee -a /etc/fstab
             fi
           EOF
           )"
           init_cmd="$(cat <<-EOF
             sleep 3
-            if [ ! -d "/mnt/vault_data/core" ] ; then
+            if [ ! -d "/mnt/hetzner_disk/vault_data/core" ] ; then
               docker exec -d vault /vault/config/init-vault.sh
             fi
           EOF
           )"
 
-          ssh -o StrictHostKeyChecking=no root@ackerson.de "$mount_cmd"
-          scp local.json init-vault.sh root@ackerson.de:/mnt/vault_data/config/
-          ssh root@ackerson.de "\
+          ssh -o StrictHostKeyChecking=no root@vault.ackerson.de "$mount_cmd"
+          scp local.json init-vault.sh root@vault.ackerson.de:/mnt/hetzner_disk/vault_data/config/
+          ssh root@vault.ackerson.de "\
             docker rm -f vault || true && \
             docker run -d --cap-add=IPC_LOCK --restart=always \
-              -v /mnt/vault_data:/vault \
+              -v /mnt/hetzner_disk/vault_data:/vault \
               -e VAULT_API_ADDR=http://127.0.0.1:8200 \
               -e VAULT_ADDR=http://127.0.0.1:8200 \
               --label='traefik.enable=true' \
@@ -69,7 +68,7 @@ jobs:
             $init_cmd"
 
           rm -Rf ~/.ssh ~/.docker/config.json
-          ./digitaloceans/do -fn=firewallSSH -allow=false -ip=$public_ip_address
+          ./hetzner -fn=cleanupDeploy -tag=traefik
 
           curl -s -o /dev/null -X POST -d token=${{ secrets.CTX_SLACK_NOTIFICATIONS_TOKEN }} -d channel=C092UE0H4 \
             -d text="<https://github.com/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID | $GITHUB_REPOSITORY @ $GITHUB_RUN_ID>" \
