@@ -31,7 +31,8 @@ jobs:
           echo "I CAN HAZ $public_ip_address ?!"
           ./hetzner/hetzner -fn=firewallSSH -tag=traefik -ip=$public_ip_address
 
-          echo -n ${{ secrets.CTX_SERVER_DEPLOY_SECRET_B64 }} | base64 -d | tee ~/.ssh/id_rsa
+          mkdir ~/.ssh/
+          echo -n ${{ secrets.CTX_SERVER_DEPLOY_SECRET_B64 }} | base64 -d | tee -a ~/.ssh/id_rsa
           chmod 400 ~/.ssh/id_rsa
 
           hz_vol_mount=/dev/disk/by-id/scsi-0HC_Volume_15704224
