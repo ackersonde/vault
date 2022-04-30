@@ -11,7 +11,7 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-latest
     env:
       CTX_HETZNER_API_TOKEN: ${{ secrets.CTX_HETZNER_API_TOKEN }}
     steps:
@@ -59,7 +59,7 @@ jobs:
           scp local.json init-vault.sh root@vault.ackerson.de:/mnt/hetzner_disk/vault_data/config/
           ssh root@vault.ackerson.de "\
             docker rm -f vault || true && docker pull vault:latest && \
-            docker run -d --cap-add=IPC_LOCK --restart=always \
+            docker run -d --cap-add=IPC_LOCK --restart=always --pull=always \
               -v /mnt/hetzner_disk/vault_data:/vault \
               -e VAULT_API_ADDR=http://127.0.0.1:8200 \
               -e VAULT_ADDR=http://127.0.0.1:8200 \
