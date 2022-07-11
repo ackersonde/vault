@@ -12,8 +12,6 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-    env:
-      CTX_HETZNER_API_TOKEN: ${{ secrets.CTX_HETZNER_API_TOKEN }}
     steps:
       - uses: actions/checkout@v2
       - uses: actions/setup-go@v2
@@ -21,7 +19,10 @@ jobs:
           go-version: '1.18'
       - name: Deploy to Hetzner
         run: |
-          git clone https://github.com/ackersonde/hetzner.git
+          export HETZNER_API_TOKEN=$(echo ${{ secrets.ORG_HETZNER_CLOUD_API_TOKEN }} | base64 -d)
+          export HETZNER_VAULT_VOLUME_ID=$(echo ${{ secrets.ORG_HETZNER_VAULT_VOLUME_ID }} | base64 -d)
+
+          git clone https://github.com/ackersonde/hetzner_vault.git
           cd hetzner
           go mod tidy
           go build hetzner.go
@@ -30,17 +31,17 @@ jobs:
           public_ip_address=$(curl -s https://checkip.amazonaws.com)
           ./hetzner/hetzner -fn=firewallSSH -tag=traefik -ip=$public_ip_address
 
-          DEPLOY_KEY=`echo -n "${{ secrets.CTX_SERVER_DEPLOY_SECRET_B64 }}" | base64 -d`
+          DEPLOY_KEY=`echo -n "${{ secrets.ORG_SERVER_DEPLOY_SECRET }}" | base64 -d`
           mkdir ~/.ssh
           cat <<EOF >~/.ssh/id_ed25519
           $DEPLOY_KEY
           EOF
           chmod 400 ~/.ssh/id_ed25519
 
-          hz_vol_mount=/dev/disk/by-id/scsi-0HC_Volume_15704224
+          HZ_VOL_MOUNT=/dev/disk/by-id/scsi-0HC_Volume_$HETZNER_VAULT_VOLUME_ID
           mount_cmd="$(cat <<-EOF
             if ! mountpoint /mnt/hetzner_disk ; then
-              mount -o discard,defaults $hz_vol_mount /mnt/hetzner_disk
+              mount -o discard,defaults $HZ_VOL_MOUNT /mnt/hetzner_disk
               mkdir -p /mnt/hetzner_disk/vault_data/config
               chown -Rf systemd-network:1000 /mnt/hetzner_disk/vault_data
               echo $hz_vol_mount /mnt/hetzner_disk ext4 defaults,nofail,discard 0 0 | sudo tee -a /etc/fstab
@@ -51,6 +52,8 @@ jobs:
             sleep 3
             if [ ! -d "/mnt/hetzner_disk/vault_data/core" ] ; then
               docker exec -d vault /vault/config/init-vault.sh
+            else
+              docker exec -d vault chown -Rf vault:vault /vault
             fi
           EOF
           )"
@@ -74,6 +77,7 @@ jobs:
           rm -Rf ~/.ssh ~/.docker/config.json
           ./hetzner/hetzner -fn=cleanupDeploy -tag=traefik
 
-          curl -s -o /dev/null -X POST -d token=${{ secrets.CTX_SLACK_NOTIFICATIONS_TOKEN }} -d channel=C092UE0H4 \
+          export SLACK_NOTIFY_TOKEN=$(echo ${{ secrets.ORG_SLACK_NOTIFICATIONS_TOKEN }} | base64 -d)
+          curl -s -o /dev/null -X POST -d token=$SLACK_NOTIFY_TOKEN -d channel=C092UE0H4 \
             -d text="<https://github.com/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID | $GITHUB_REPOSITORY @ $GITHUB_RUN_ID>" \
             https://slack.com/api/chat.postMessage
