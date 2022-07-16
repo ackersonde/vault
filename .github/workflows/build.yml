@@ -11,7 +11,7 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v2
       - uses: actions/setup-go@v2
@@ -31,11 +31,8 @@ jobs:
           public_ip_address=$(curl -s https://checkip.amazonaws.com)
           ./hetzner_vault/hetzner -fn=firewallSSH -tag=traefik -ip=$public_ip_address
 
-          DEPLOY_KEY=`echo -n "${{ secrets.ORG_SERVER_DEPLOY_SECRET }}" | base64 -d`
           mkdir ~/.ssh
-          cat <<EOF >~/.ssh/id_ed25519
-          $DEPLOY_KEY
-          EOF
+          echo -n "${{ secrets.ORG_SERVER_DEPLOY_SECRET }}" | base64 -d | tee ~/.ssh/id_ed25519
           chmod 400 ~/.ssh/id_ed25519
 
           HZ_VOL_MOUNT=/dev/disk/by-id/scsi-0HC_Volume_$HETZNER_VAULT_VOLUME_ID
@@ -52,8 +49,11 @@ jobs:
             sleep 3
             if [ ! -d "/mnt/hetzner_disk/vault_data/core" ] ; then
               docker exec -d vault /vault/config/init-vault.sh
-            else
+            else # if attaching to existing, correct folder permissions and restart
+              sleep 3
               docker exec -d vault chown -Rf vault:vault /vault
+              sleep 3
+              docker restart vault
             fi
           EOF
           )"
