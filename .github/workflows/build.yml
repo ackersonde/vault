@@ -22,17 +22,17 @@ jobs:
           export HETZNER_API_TOKEN=$(echo ${{ secrets.ORG_HETZNER_CLOUD_API_TOKEN }} | base64 -d)
           export HETZNER_VAULT_VOLUME_ID=$(echo ${{ secrets.ORG_HETZNER_VAULT_VOLUME_ID }} | base64 -d)
 
-          git clone https://github.com/ackersonde/hetzner_vault.git
-          cd hetzner_vault
+          git clone https://github.com/ackersonde/hetzner_home.git
+          cd hetzner_home
           go mod tidy
           go build hetzner.go
           cd ../
 
           public_ip_address=$(curl -s https://checkip.amazonaws.com)
-          ./hetzner_vault/hetzner -fn=firewallSSH -tag=traefik -ip=$public_ip_address
+          ./hetzner_home/hetzner -fn=firewallSSH -tag=vault -ip=$public_ip_address
 
           mkdir ~/.ssh
-          echo -n "${{ secrets.ORG_SERVER_DEPLOY_SECRET }}" | base64 -d | tee ~/.ssh/id_ed25519
+          echo -n "${{ secrets.ORG_SERVER_DEPLOY_SECRET }}" | base64 -d > ~/.ssh/id_ed25519
           chmod 400 ~/.ssh/id_ed25519
 
           HZ_VOL_MOUNT=/dev/disk/by-id/scsi-0HC_Volume_$HETZNER_VAULT_VOLUME_ID
@@ -50,7 +50,6 @@ jobs:
             if [ ! -d "/mnt/hetzner_disk/vault_data/core" ] ; then
               docker exec -d vault /vault/config/init-vault.sh
             else # if attaching to existing, correct folder permissions and restart
-              sleep 3
               docker exec -d vault chown -Rf vault:vault /vault
               sleep 3
               docker restart vault
@@ -68,14 +67,13 @@ jobs:
               -e VAULT_ADDR=http://127.0.0.1:8200 \
               --label='traefik.enable=true' \
               --label='traefik.http.routers.vault.middlewares=http-ratelimit@file,secHeaders@file' \
-              --label='traefik.http.routers.vault.tls.certResolver=letsencrypt' \
               --label='traefik.http.routers.vault.tls.domains=vault.ackerson.de' \
               --label='traefik.http.routers.vault.rule=Host(\`vault.ackerson.de\`)' \
               --name vault vault:latest server && \
             $init_cmd"
 
           rm -Rf ~/.ssh
-          ./hetzner_vault/hetzner -fn=cleanupDeploy -tag=traefik
+          ./hetzner_home/hetzner -fn=cleanupDeploy -tag=vault
 
           export SLACK_NOTIFY_TOKEN=$(echo ${{ secrets.ORG_SLACK_NOTIFICATIONS_TOKEN }} | base64 -d)
           curl -s -o /dev/null -X POST -d token=$SLACK_NOTIFY_TOKEN -d channel=C092UE0H4 \
